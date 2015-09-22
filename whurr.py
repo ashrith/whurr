@@ -2,7 +2,7 @@
 
 #NOTES
 #Remember to have a new pem key for uswest-2. Actually remember to have a new key for every place. 
-import boto3, os, base64, time
+import boto3, os, base64, time, random
 
 subnet_range = '10.0.48.0/24'
 vpc_range = '10.0.48.0/24'
@@ -214,4 +214,32 @@ def call_boto_resource(service = 'ec2', region='us-west-2',access_key_id = 'INS_
 	
 
 __name__=="__main__"
+
+
+################################################################
+# Technically this must different piece of code. The above must
+# declared as a Python class. And this code must extend. But for
+# now, as always...
+# Please, please, please move this code out! 
+################################################################
+ec2_as_resource = call_boto_resource()
+dummy_obj = call_me_one_nn(ec2_as_resource, None, 'ash-key-insight', None, None, 1, 1)
+dummy_obj = call_my_new_instances(ec2_as_resource, None, 'ash-key-insight', None, None, 1, 5)
+
+################################################################
+# Give enough time for the Instance to create data and all the 
+# required stuff.
+# Also, make sure that the new instance is booted up after a 
+# slight delay.
+################################################################
+time.sleep(3600)
+instance_obj_list = list(ec2_as_resource.instances.filter(Filters=[{'Name':'tag-value','Values':[create_my_tag('instance')]}]))
+live_instance_object_list = filter(lambda iol: iol.state['Code'] != 48 and iol.private_ip_address != '10.0.48.5', instance_object_list)
+
+while(True):
+	time.sleep(300)
+	picked_random_instance = random.choice(live_instance_object_list)
+	terminal_status = picked_random_instance.terminate()
+	pickced_random_instance.wait_until_terminated()
+	dummy_obj = call_my_new_instances(ec2_as_resource, None, 'ash-key-insight', None, None, 1, 1)
 
