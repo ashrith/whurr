@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+# /usr/bin/env python
 
 #NOTES
 #Remember to have a new pem key for uswest-2. Actually remember to have a new key for every place. 
@@ -125,6 +125,26 @@ def call_my_security_groups(self, security_groups_id = None, vpc_id=None):
                         			'CidrIp': '0.0.0.0/0'
                     			},
                 		],
+            		},
+            		{
+                		'IpProtocol': 'tcp',
+                		'FromPort': 8088,
+                		'ToPort': 8088,
+                		'IpRanges': [
+                    			{
+                        			'CidrIp': '0.0.0.0/0'
+                    			},
+                		],
+            		},
+            		{
+                		'IpProtocol': 'tcp',
+                		'FromPort': 50070,
+                		'ToPort': 50070,
+                		'IpRanges': [
+                    			{
+                        			'CidrIp': '0.0.0.0/0'
+                    			},
+                		],
             		}
         		]
         		security_groups_object.authorize_egress(IpPermissions=IpPermissions)
@@ -139,7 +159,7 @@ def call_my_security_groups(self, security_groups_id = None, vpc_id=None):
 def call_my_instance_customizer(file_name=None):
 	try:
 		shell_code_file=os.path.abspath(file_name)
-		shell_file_raw_object = open(shellcodefile,'r').read()
+		shell_file_raw_object = open(shell_code_file,'r').read()
 		shell_file_failure_message =  None
 	except (IOError, AttributeError):
 		shell_file_raw_object = None
@@ -148,7 +168,7 @@ def call_my_instance_customizer(file_name=None):
 			
 		
 
-def call_my_new_instances(self, customizer_file_name = None, key_file_name = None, subnet_id = None, security_groups_id=None, min_number_of_instances = 1, max_number_of_instances = 1, base_image_id = 'ami-0be2743b', base_instance_type = 'm4.large'):
+def call_my_new_instances(self, customizer_file_name = None, key_file_name = None, subnet_id = None, security_groups_id=None, min_number_of_instances = 1, max_number_of_instances = 1, base_image_id = 'ami-0be2743b', base_instance_type = 'm4.2xlarge',vol_size=750):
 	subnet_obj, subnet_obj_id  = call_my_subnet(self, subnet_id)
 	security_groups_obj, security_groups_obj_id = call_my_security_groups(self, security_groups_id)
 	customizer_obj, customizer_error_msg = call_my_instance_customizer(customizer_file_name)
@@ -164,6 +184,7 @@ def call_my_new_instances(self, customizer_file_name = None, key_file_name = Non
 				KeyName = key_file_name,
 				ImageId = base_image_id,
 				InstanceType = base_instance_type,
+				BlockDeviceMappings=[{'VirtualName':'drive-one','DeviceName':'/dev/sda1','Ebs':{'VolumeSize':vol_size,'DeleteOnTermination':True,'VolumeType':'standard'}}],
 				NetworkInterfaces=[{'SubnetId': subnet_obj_id, 'DeviceIndex':0, 'Groups':[security_groups_obj_id], 'AssociatePublicIpAddress':True}]
 	)
 	time.sleep(100)
@@ -179,7 +200,7 @@ def call_my_new_instances(self, customizer_file_name = None, key_file_name = Non
 # But this is terrible.
 ################################################################
 
-def call_me_one_nn(self, customizer_file_name = None, key_file_name = None, subnet_id = None, security_groups_id = None, min_number_of_instances = 1, max_number_of_instances = 1, base_image_id = 'ami-0be2743b', base_instance_type = 'm4.large'):
+def call_me_one_nn(self, customizer_file_name = None, key_file_name = None, subnet_id = None, security_groups_id = None, min_number_of_instances = 1, max_number_of_instances = 1, base_image_id = 'ami-0be2743b', base_instance_type = 'm4.2xlarge',vol_size=750):
 	subnet_obj, subnet_obj_id  = call_my_subnet(self, subnet_id)
 	security_groups_obj, security_groups_obj_id = call_my_security_groups(self, security_groups_id)
 	customizer_obj, customizer_error_msg = call_my_instance_customizer(customizer_file_name)
@@ -195,6 +216,7 @@ def call_me_one_nn(self, customizer_file_name = None, key_file_name = None, subn
 				KeyName = key_file_name,
 				ImageId = base_image_id,
 				InstanceType = base_instance_type,
+				BlockDeviceMappings=[{'VirtualName':'drive-one','DeviceName':'/dev/sda1','Ebs':{'VolumeSize':vol_size,'DeleteOnTermination':True,'VolumeType':'standard'}}],
 				NetworkInterfaces=[{'SubnetId': subnet_obj_id, 'DeviceIndex':0, 'Groups':[security_groups_obj_id], 'PrivateIpAddress':'10.0.48.5','AssociatePublicIpAddress':True}]
 	)
 	time.sleep(100)
@@ -223,23 +245,10 @@ __name__=="__main__"
 # Please, please, please move this code out! 
 ################################################################
 ec2_as_resource = call_boto_resource()
-dummy_obj = call_me_one_nn(ec2_as_resource, None, 'ash-key-insight', None, None, 1, 1)
-dummy_obj = call_my_new_instances(ec2_as_resource, None, 'ash-key-insight', None, None, 1, 5)
+dummy_obj = call_me_one_nn(ec2_as_resource, 'shell.sh', 'ash-key-insight', None, None, 1, 1)
+dummy_obj = call_my_new_instances(ec2_as_resource,'shell.sh', 'ash-key-insight', None, None, 1, 5)
 
 ################################################################
 # Give enough time for the Instance to create data and all the 
 # required stuff.
-# Also, make sure that the new instance is booted up after a 
-# slight delay.
 ################################################################
-time.sleep(3600)
-instance_obj_list = list(ec2_as_resource.instances.filter(Filters=[{'Name':'tag-value','Values':[create_my_tag('instance')]}]))
-live_instance_object_list = filter(lambda iol: iol.state['Code'] != 48 and iol.private_ip_address != '10.0.48.5', instance_object_list)
-
-while(True):
-	time.sleep(300)
-	picked_random_instance = random.choice(live_instance_object_list)
-	terminal_status = picked_random_instance.terminate()
-	pickced_random_instance.wait_until_terminated()
-	dummy_obj = call_my_new_instances(ec2_as_resource, None, 'ash-key-insight', None, None, 1, 1)
-
