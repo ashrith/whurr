@@ -11,3 +11,6 @@ Tessera Stack (previously known as RHIPE stack)
 These things can be ignored by just commenting out the code. 
 
 You could run it as $ ./whurr.py or $ python whurr.py 
+
+
+NOTE: Hadoop Stress test code has been moved to https://github.com/ashrith/shakedown
